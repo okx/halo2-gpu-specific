@@ -199,6 +199,7 @@ where
 {
     let (domain, cs, config) = create_domain::<C, ConcreteCircuit>(params);
 
+    println!("keygen_vk, rows:{}", cs.minimum_rows());
     if (params.n as usize) < cs.minimum_rows() {
         return Err(Error::not_enough_rows_available(params.k));
     }
@@ -260,6 +261,7 @@ where
 
     let cs = cs;
 
+    println!("keygen_pk, rows:{}", cs.minimum_rows());
     if (params.n as usize) < cs.minimum_rows() {
         return Err(Error::not_enough_rows_available(params.k));
     }
