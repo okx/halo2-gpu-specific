@@ -199,10 +199,11 @@ where
 {
     let (domain, cs, config) = create_domain::<C, ConcreteCircuit>(params);
 
-    println!("keygen_vk, rows:{}", cs.minimum_rows());
+    println!("keygen_vk, n:{}, rows:{}", params.n, cs.minimum_rows());
     if (params.n as usize) < cs.minimum_rows() {
         return Err(Error::not_enough_rows_available(params.k));
     }
+    println!("check pass");
 
     let mut assembly: Assembly<C::Scalar> = Assembly {
         k: params.k,
@@ -261,10 +262,11 @@ where
 
     let cs = cs;
 
-    println!("keygen_pk, rows:{}", cs.minimum_rows());
+    println!("keygen_pk, n:{}, rows:{}", params.n, cs.minimum_rows());
     if (params.n as usize) < cs.minimum_rows() {
         return Err(Error::not_enough_rows_available(params.k));
     }
+    println!("check pass");
 
     let mut assembly: Assembly<C::Scalar> = Assembly {
         k: params.k,
