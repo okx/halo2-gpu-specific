@@ -130,7 +130,7 @@ pub struct PinnedVerificationKey<'a, C: CurveAffine> {
 }
 /// This is a proving key which allows for the creation of proofs for a
 /// particular circuit.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ProvingKey<C: CurveAffine> {
     vk: VerifyingKey<C>,
     

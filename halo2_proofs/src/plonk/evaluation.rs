@@ -245,7 +245,7 @@ impl Calculation {
 }
 
 /// EvaluationData
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Evaluator<C: CurveAffine> {
     /// Constants
     pub constants: Vec<C::ScalarExt>,
@@ -264,7 +264,7 @@ pub struct Evaluator<C: CurveAffine> {
 }
 
 /// CaluclationInfo
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CalculationInfo {
     /// Calculation
     pub calculation: Calculation,
