@@ -845,6 +845,8 @@ impl<C: CurveAffine> Evaluator<C> {
             slice::ParallelSlice,
         };
         use std::{collections::LinkedList, marker::PhantomData};
+        use crate::arithmetic::acquire_gpu;
+        use crate::arithmetic::release_gpu;
 
         use crate::plonk::evaluation_gpu::{do_extended_fft, gen_do_extended_fft};
 
@@ -859,10 +861,13 @@ impl<C: CurveAffine> Evaluator<C> {
         let (mut values, cache) = pk
             .ev
             .gpu_gates_expr
-            //.par_iter()
-            .iter()
-            .enumerate()
-            .map(|(group_idx, x)| x.eval_gpu(group_idx, pk, &unit_stat, &advice_poly[0], &instance_poly[0], y))
+            .par_iter()
+            .map(|x| {
+                 let gpu_idx = acquire_gpu();
+                 let r = x.eval_gpu(gpu_idx, pk, &unit_stat, &advice_poly[0], &instance_poly[0], y);
+                 release_gpu(gpu_idx);
+                 r
+            })
             .collect::<Vec<_>>()
             .into_iter()
             .reduce(|(acc, cache), (x,_)| (acc + &x, cache))
@@ -1096,21 +1101,18 @@ impl<C: CurveAffine> Evaluator<C> {
             );
 
             let devices = Device::all();
-            let programs = devices
-                .iter()
-                .map(|device| ec_gpu_gen::program!(device))
-                .collect::<Result<_, _>>()
-                .expect("Cannot create programs!");
-            let kern = FftKernel::<Fr>::create(programs).expect("Cannot initialize kernel!");
-            let group_idx = 0;
-            let gpu_idx = group_idx % kern.kernels.len();
+            let gpu_idx = acquire_gpu();
 
-            kern.kernels[gpu_idx]
+            let device = devices[gpu_idx % devices.len()];
+            let programs = vec![ec_gpu_gen::program!(device).unwrap()];
+            let kern = FftKernel::<Fr>::create(programs).expect("Cannot initialize kernel!");
+            kern.kernels[0]
                 .program
                 .run(closures, unsafe {
                     std::mem::transmute::<_, &mut [Fr]>(&mut values.values[..])
                 })
                 .unwrap();
+            release_gpu(gpu_idx);
         }
         end_timer!(timer);
 
@@ -1130,14 +1132,15 @@ impl<C: CurveAffine> Evaluator<C> {
                     // fft code: from ec-gpu lib.
                     let mut buffer = vec![];
                     buffer.resize(domain.extended_len(), C::Scalar::zero());
+
+                    let gpu_idx = acquire_gpu();
                     let devices = Device::all();
-                    let programs = devices
-                        .iter()
-                        .map(|device| ec_gpu_gen::program!(device))
-                        .collect::<Result<_, _>>()
-                        .expect("Cannot create programs!");
+                    let device = devices[gpu_idx % devices.len()];
+
+                    let programs = vec![ec_gpu_gen::program!(device).unwrap()];
                     let kern =
                         FftKernel::<Fr>::create(programs).expect("Cannot initialize kernel!");
+
                     let closures =
                         ec_gpu_gen::rust_gpu_tools::program_closures!(|program,
                                                                        args: (
@@ -1258,8 +1261,7 @@ impl<C: CurveAffine> Evaluator<C> {
 
                     let mut tmp_value = pk.vk.domain.empty_extended();
 
-                    let gpu_idx = group_idx % kern.kernels.len();
-                    kern.kernels[gpu_idx]
+                    kern.kernels[0]
                         .program
                         .run(closures, unsafe {
                             (
@@ -1269,6 +1271,7 @@ impl<C: CurveAffine> Evaluator<C> {
                             )
                         })
                         .unwrap();
+                    release_gpu(gpu_idx);
                     (tmp_value, lookups.len())
                 })
                 .collect::<Vec<_>>()
