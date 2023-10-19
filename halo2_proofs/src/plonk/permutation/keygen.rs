@@ -1,3 +1,4 @@
+use std::ops::MulAssign;
 use ark_std::{end_timer, start_timer};
 use ff::Field;
 use group::Curve;
@@ -109,6 +110,12 @@ impl Assembly {
         domain: &EvaluationDomain<C::Scalar>,
         p: &Argument,
     ) -> VerifyingKey<C> {
+        // Compute [delta^0, delta^1, ..., delta^{columns.len() - 1}]
+        let mut delta_powers = vec![C::Scalar::one()];
+        for _ in 1..p.columns.len() {
+            delta_powers.push(C::Scalar::DELTA * delta_powers.last().unwrap());
+        }
+
         // Compute [omega^0, omega^1, ..., omega^{params.n - 1}]
         let mut omega_powers = Vec::with_capacity(params.n as usize);
         {
@@ -116,22 +123,6 @@ impl Assembly {
             for _ in 0..params.n {
                 omega_powers.push(cur);
                 cur *= &domain.get_omega();
-            }
-        }
-
-        // Compute [omega_powers * \delta^0, omega_powers * \delta^1, ..., omega_powers * \delta^m]
-        let mut delta_omegas = Vec::with_capacity(p.columns.len());
-        {
-            let mut cur = C::Scalar::one();
-            for _ in 0..p.columns.len() {
-                let mut omega_powers = omega_powers.clone();
-                for o in &mut omega_powers {
-                    *o *= &cur;
-                }
-
-                delta_omegas.push(omega_powers);
-
-                cur *= &C::Scalar::DELTA;
             }
         }
 
@@ -143,7 +134,7 @@ impl Assembly {
             let mut permutation_poly = domain.empty_lagrange();
             for (j, p) in permutation_poly.iter_mut().enumerate() {
                 let (permuted_i, permuted_j) = self.mapping[i][j];
-                *p = delta_omegas[permuted_i as usize][permuted_j as usize];
+                *p = delta_powers[permuted_i as usize] * omega_powers[permuted_j as usize];
             }
 
             // Compute commitment to permutation polynomial
@@ -158,21 +149,20 @@ impl Assembly {
         domain: &EvaluationDomain<C::Scalar>,
         p: &Argument,
     ) -> ProvingKey<C> {
-        // Compute [omega^0, omega^1, ..., omega^{params.n - 1}]
+        // Compute [delta^0, delta^1, ..., delta^{columns.len() - 1}]
         let timer = start_timer!(|| "prepare delta_omegas");
-        let mut deltas = vec![C::Scalar::one()];
+        let mut delta_powers = vec![C::Scalar::one()];
         for _ in 1..p.columns.len() {
-            deltas.push(C::Scalar::DELTA * deltas.last().unwrap());
+            delta_powers.push(C::Scalar::DELTA * delta_powers.last().unwrap());
         }
 
-        let mut delta_omegas = vec![vec![]; p.columns.len()];
+        // Compute [omega^0, omega^1, ..., omega^{params.n - 1}]
+        let mut omega_powers = Vec::with_capacity(params.n as usize);
+        omega_powers.push(C::Scalar::one());
         let omega = domain.get_omega();
-        delta_omegas.par_iter_mut().enumerate().for_each(|(i, x)| {
-            x.push(deltas[i]);
-            for _ in 1..params.n {
-                x.push(omega * x.last().unwrap())
-            }
-        });
+        for _ in 1..params.n {
+            omega_powers.push(omega * omega_powers.last().unwrap())
+        }
         end_timer!(timer);
 
         let timer = start_timer!(|| "prepare permutations");
@@ -187,7 +177,8 @@ impl Assembly {
                 permutation_poly.iter_mut().enumerate().for_each(|(j, p)| {
                     let j = start + j;
                     let (permuted_i, permuted_j) = self.mapping[i][j];
-                    *p = delta_omegas[permuted_i as usize][permuted_j as usize];
+
+                    *p = delta_powers[permuted_i as usize] * omega_powers[permuted_j as usize] ;
                 });
             });
 
