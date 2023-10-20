@@ -792,8 +792,8 @@ impl ParaSerializable for Assembly {
         let assembly = Assembly {
             columns: vec![], //Vec::fetch(reader)?,
             mapping: Vec::<Vec::<(u32, u32)>>::vec_fetch(fd)?,
-            aux: vec![],   //Vec::fetch(reader)?,
-            sizes: vec![], //Vec::fetch(reader)?,
+            // aux: vec![],   //Vec::fetch(reader)?,
+            // sizes: vec![], //Vec::fetch(reader)?,
         };
         Ok(assembly)
     }

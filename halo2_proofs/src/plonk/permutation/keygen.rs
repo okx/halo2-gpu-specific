@@ -18,8 +18,8 @@ use crate::{
 pub(crate) struct Assembly {
     pub(crate) columns: Vec<Column<Any>>,
     pub(crate) mapping: Vec<Vec<(u32, u32)>>,
-    pub(crate) aux: Vec<Vec<(u32, u32)>>,
-    pub(crate) sizes: Vec<Vec<usize>>,
+    // pub(crate) aux: Vec<Vec<(u32, u32)>>,
+    // pub(crate) sizes: Vec<Vec<usize>>,
 }
 
 impl Assembly {
@@ -41,9 +41,9 @@ impl Assembly {
         // its own distinguished element.
         Assembly {
             columns: p.columns.clone(),
-            mapping: columns,
-            aux: vec![], //columns,
-            sizes: vec![], //vec![vec![1usize; n]; p.columns.len()],
+            mapping: columns, //columns.clone(),
+            // aux: columns,
+            // sizes: vec![vec![1usize; n]; p.columns.len()],
         }
     }
 
@@ -66,36 +66,36 @@ impl Assembly {
             .ok_or(Error::ColumnNotInPermutation(right_column))?;
 
         // Check bounds
-        if left_row >= self.mapping[left_column].len()
-            || right_row >= self.mapping[right_column].len()
-        {
-            return Err(Error::BoundsFailure);
-        }
+        // if left_row >= self.mapping[left_column].len()
+        //     || right_row >= self.mapping[right_column].len()
+        // {
+        //     return Err(Error::BoundsFailure);
+        // }
 
         // See book/src/design/permutation.md for a description of this algorithm.
 
-        let mut left_cycle = self.aux[left_column][left_row];
-        let mut right_cycle = self.aux[right_column][right_row];
-
-        // If left and right are in the same cycle, do nothing.
-        if left_cycle == right_cycle {
-            return Ok(());
-        }
-
-        if self.sizes[left_cycle.0 as usize][left_cycle.1 as usize] < self.sizes[right_cycle.0 as usize][right_cycle.1 as usize] {
-            std::mem::swap(&mut left_cycle, &mut right_cycle);
-        }
-
-        // Merge the right cycle into the left one.
-        self.sizes[left_cycle.0 as usize][left_cycle.1 as usize] += self.sizes[right_cycle.0 as usize][right_cycle.1 as usize];
-        let mut i = right_cycle;
-        loop {
-            self.aux[i.0 as usize][i.1 as usize] = left_cycle;
-            i = self.mapping[i.0 as usize][i.1 as usize];
-            if i == right_cycle {
-                break;
-            }
-        }
+        // let mut left_cycle = self.aux[left_column][left_row];
+        // let mut right_cycle = self.aux[right_column][right_row];
+        //
+        // // If left and right are in the same cycle, do nothing.
+        // if left_cycle == right_cycle {
+        //     return Ok(());
+        // }
+        //
+        // if self.sizes[left_cycle.0 as usize][left_cycle.1 as usize] < self.sizes[right_cycle.0 as usize][right_cycle.1 as usize] {
+        //     std::mem::swap(&mut left_cycle, &mut right_cycle);
+        // }
+        //
+        // // Merge the right cycle into the left one.
+        // self.sizes[left_cycle.0 as usize][left_cycle.1 as usize] += self.sizes[right_cycle.0 as usize][right_cycle.1 as usize];
+        // let mut i = right_cycle;
+        // loop {
+        //     self.aux[i.0 as usize][i.1 as usize] = left_cycle;
+        //     i = self.mapping[i.0 as usize][i.1 as usize];
+        //     if i == right_cycle {
+        //         break;
+        //     }
+        // }
 
         let tmp = self.mapping[left_column][left_row];
         self.mapping[left_column][left_row] = self.mapping[right_column][right_row];
