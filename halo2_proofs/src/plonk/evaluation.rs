@@ -861,7 +861,8 @@ impl<C: CurveAffine> Evaluator<C> {
         let (mut values, cache) = pk
             .ev
             .gpu_gates_expr
-            .par_iter()
+            // .par_iter()
+            .iter()
             .map(|x| {
                  let gpu_idx = acquire_gpu();
                  let r = x.eval_gpu(gpu_idx, pk, &unit_stat, &advice_poly[0], &instance_poly[0], y);
